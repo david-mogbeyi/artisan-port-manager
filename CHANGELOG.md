@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-19
+
+Ports can now be named and pinned, turning the list from a system readout into a
+personal dashboard.
+
+### Added
+
+- **Port aliases.** Rename any port to something meaningful — "Artisan DB" instead of
+  `5432` — from the row's context menu or the detail view. The alias becomes the row's
+  primary label and the process name moves to the caption, so nothing is lost. Aliases are
+  keyed by port and executable rather than PID, so they survive server restarts.
+- **Favorites.** Pin the ports you check constantly and they sort to the top of the list,
+  marked with a star. Ordering within the pinned and unpinned bands is otherwise unchanged.
+- Aliases are searchable alongside ports, PIDs, process names, projects, commands, users,
+  and working directories.
+- Rename sheet reachable from the list context menu and the detail view's More menu, with
+  a Remove Alias action when one is already set.
+
 ## [1.1.0] - 2026-08-18
 
 Focused on the port list and detail views: a process that listens on many ports no
@@ -59,6 +77,7 @@ longer floods the list, and the detail screen now fits the popover.
 - Collapsed duplicate rows for the same process and port, including parallel IPv4/IPv6
   sockets and repeated file descriptors for one listener.
 
-[Unreleased]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/david-mogbeyi/artisan-port-manager/releases/tag/v1.0.0

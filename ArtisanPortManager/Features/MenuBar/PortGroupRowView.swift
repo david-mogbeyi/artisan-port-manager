@@ -5,6 +5,8 @@ struct PortGroupRowView: View {
     let group: PortGroup
     let isExpanded: Bool
     let terminatingPIDs: Set<pid_t>
+    var alias: String?
+    var isFavorite = false
 
     private var isTerminating: Bool { terminatingPIDs.contains(group.pid) }
 
@@ -21,6 +23,12 @@ struct PortGroupRowView: View {
                         .font(.headline.monospacedDigit())
                         .lineLimit(1)
                         .truncationMode(.tail)
+                    if isFavorite {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                            .accessibilityLabel("Favorite")
+                    }
                     Spacer(minLength: 4)
                     Text("\(group.ports.count) ports")
                         .font(.caption2.weight(.semibold))
@@ -30,7 +38,7 @@ struct PortGroupRowView: View {
                         .background(.quaternary, in: Capsule())
                         .fixedSize()
                 }
-                Text(group.processName).lineLimit(1).truncationMode(.middle)
+                Text(alias ?? group.processName).lineLimit(1).truncationMode(.middle)
                 Text("\(group.projectName ?? "PID \(group.pid)") · PID \(group.pid)")
                     .font(.caption)
                     .foregroundStyle(.secondary)

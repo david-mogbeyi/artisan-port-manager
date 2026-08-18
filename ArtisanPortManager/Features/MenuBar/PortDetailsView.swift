@@ -5,6 +5,7 @@ struct PortDetailsView: View {
     @ObservedObject var state: AppState
     @State private var pendingForce = false
     @State private var showsConfirmation = false
+    @State private var isRenaming = false
     private let browser = BrowserService()
     private let clipboard = ClipboardService()
 
@@ -21,14 +22,28 @@ struct PortDetailsView: View {
                                 .font(.system(size: 26, weight: .semibold, design: .rounded))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
-                            Text(port.processName)
+                            Text(state.alias(for: port) ?? port.processName)
                                 .font(.headline)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                                 .textSelection(.enabled)
+                            if state.alias(for: port) != nil {
+                                Text(port.processName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
                         }
                         .layoutPriority(1)
                         Spacer(minLength: 8)
+                        Button { state.toggleFavorite(port) } label: {
+                            Image(systemName: state.isFavorite(port) ? "star.fill" : "star")
+                                .foregroundStyle(state.isFavorite(port) ? .yellow : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(state.isFavorite(port) ? "Remove from Favorites" : "Add to Favorites")
+                        .accessibilityLabel(state.isFavorite(port) ? "Remove from Favorites" : "Add to Favorites")
                         Label("Listening", systemImage: "circle.fill")
                             .font(.caption).foregroundStyle(.green)
                             .lineLimit(1)
@@ -59,6 +74,11 @@ struct PortDetailsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("Port " + String(port.port))
+        .sheet(isPresented: $isRenaming) {
+            RenamePortView(port: port, currentAlias: state.alias(for: port)) { alias in
+                state.setAlias(alias, for: port)
+            }
+        }
         .confirmationDialog(pendingForce ? "Force kill \(port.processName)?" : "Terminate \(port.processName) on port \(port.port)?",
                             isPresented: $showsConfirmation, titleVisibility: .visible) {
             Button(pendingForce ? "Force Kill" : "Terminate", role: .destructive) {
@@ -107,6 +127,8 @@ struct PortDetailsView: View {
                 Button("Process Name") { clipboard.copy(port.processName) }
                 if let cwd = port.workingDirectory { Button("Working Directory") { clipboard.copy(cwd) } }
                 Button("Full Process Information") { clipboard.copy(port.fullDescription) }
+                Divider()
+                Button(state.alias(for: port) == nil ? "Rename…" : "Edit Alias…") { isRenaming = true }
                 if let cwd = port.workingDirectory {
                     Divider()
                     Button("Reveal Project in Finder") { browser.reveal(directory: cwd) }
