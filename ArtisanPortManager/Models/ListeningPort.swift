@@ -29,11 +29,11 @@ struct ListeningPort: Identifiable, Sendable, Hashable {
         return addressFamily == .ipv6 ? "[\(address)]:\(port)" : "\(address):\(port)"
     }
 
-    func matches(_ query: String) -> Bool {
+    func matches(_ query: String, alias: String? = nil) -> Bool {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !needle.isEmpty else { return true }
         return [String(port), String(pid), processName, projectName, command,
-                workingDirectory, user, address]
+                workingDirectory, user, address, alias]
             .compactMap { $0?.lowercased() }
             .contains { $0.contains(needle) }
     }

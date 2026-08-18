@@ -6,7 +6,8 @@ Artisan Port Manager is a lightweight, native macOS menu-bar utility for finding
 
 - Live, ascending list of TCP listeners with port, process, PID, user, address family, command, executable, working directory, and inferred project name
 - Processes listening on multiple ports are grouped into one collapsible row, so a single noisy process does not flood the list
-- Instant search across ports, PIDs, process names, projects, commands, users, addresses, and working directories
+- Instant search across ports, PIDs, process names, projects, commands, users, addresses, working directories, and aliases
+- Rename ports to meaningful aliases and pin favorites to the top of the list; both are keyed by port and executable, so they survive restarts
 - Native browser, clipboard, and Finder actions
 - Safe process control: PID identity revalidation, SIGTERM by default, separately confirmed SIGKILL, self-process protection, duplicate-signal prevention, and clear permission errors
 - Manual refresh (`⌘R`) and configurable auto-refresh while the menu UI is active
@@ -111,5 +112,5 @@ changes for each release are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 - Signed/notarized release automation and DMG packaging
 - Optional Docker container enrichment
-- Friendly aliases, favorites, and port occupancy notifications
+- Port occupancy notifications
 - HTTP/HTTPS reachability detection

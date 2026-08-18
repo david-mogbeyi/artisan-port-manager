@@ -7,6 +7,7 @@ struct PortListView: View {
     @State private var pendingForce = false
     @State private var showsConfirmation = false
     @State private var expandedPIDs: Set<pid_t> = []
+    @State private var renamingPort: ListeningPort?
     private let browser = BrowserService()
     private let clipboard = ClipboardService()
 
@@ -40,6 +41,11 @@ struct PortListView: View {
             }
         }
         .navigationDestination(for: ListeningPort.self) { PortDetailsView(port: $0, state: state) }
+        .sheet(item: $renamingPort) { port in
+            RenamePortView(port: port, currentAlias: state.alias(for: port)) { alias in
+                state.setAlias(alias, for: port)
+            }
+        }
         .confirmationDialog(confirmationTitle, isPresented: $showsConfirmation, titleVisibility: .visible) {
             Button(pendingForce ? "Force Kill" : "Terminate", role: .destructive) {
                 if let pendingPort { Task { await state.terminate(pendingPort, force: pendingForce) } }
@@ -60,7 +66,9 @@ struct PortListView: View {
             } label: {
                 PortGroupRowView(group: group,
                                  isExpanded: expandedPIDs.contains(group.pid),
-                                 terminatingPIDs: state.terminatingPIDs)
+                                 terminatingPIDs: state.terminatingPIDs,
+                                 alias: state.alias(for: group.representative),
+                                 isFavorite: group.ports.contains(where: state.isFavorite))
             }
             .buttonStyle(.plain)
 
@@ -76,7 +84,10 @@ struct PortListView: View {
     @ViewBuilder private func portRow(_ port: ListeningPort, isNested: Bool) -> some View {
         HStack(spacing: 8) {
             NavigationLink(value: port) {
-                PortRowView(port: port, isTerminating: state.terminatingPIDs.contains(port.pid))
+                PortRowView(port: port,
+                            isTerminating: state.terminatingPIDs.contains(port.pid),
+                            alias: state.alias(for: port),
+                            isFavorite: state.isFavorite(port))
             }
             .buttonStyle(.plain)
 
@@ -109,6 +120,13 @@ struct PortListView: View {
             if expandedPIDs.contains(group.pid) { expandedPIDs.remove(group.pid) }
             else { expandedPIDs.insert(group.pid) }
         }
+        Button(state.isFavorite(group.representative) ? "Remove from Favorites" : "Add to Favorites") {
+            state.toggleFavorite(group.representative)
+        }
+        Button(state.alias(for: group.representative) == nil ? "Rename…" : "Edit Alias…") {
+            renamingPort = group.representative
+        }
+        Divider()
         Button("Copy All Ports") {
             clipboard.copy(group.ports.map { String($0.port) }.joined(separator: ", "))
         }
@@ -122,6 +140,11 @@ struct PortListView: View {
     }
 
     @ViewBuilder private func contextMenu(for port: ListeningPort) -> some View {
+        Button(state.isFavorite(port) ? "Remove from Favorites" : "Add to Favorites") {
+            state.toggleFavorite(port)
+        }
+        Button(state.alias(for: port) == nil ? "Rename…" : "Edit Alias…") { renamingPort = port }
+        Divider()
         Button("Open localhost:\(port.port)") { browser.open(port: port) }
         Button("Copy URL") { clipboard.copy("http://localhost:\(port.port)") }
         Button("Copy Port") { clipboard.copy(String(port.port)) }
