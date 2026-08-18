@@ -16,6 +16,10 @@ struct SettingsView: View {
                 }
                 .disabled(!settings.autoRefresh)
                 Toggle("Show Other Users’ Processes", isOn: $settings.showSystemProcesses)
+                Toggle("Check Port Reachability", isOn: $settings.probeReachability)
+                Text("Probes each listening port on loopback to detect whether it serves HTTP, HTTPS, or only accepts TCP.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Toggle("Launch at Login", isOn: Binding(
                     get: { settings.launchAtLogin },
                     set: { settings.setLaunchAtLogin($0) }
@@ -26,7 +30,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 440, height: 260)
+        .frame(width: 440, height: 320)
         .navigationTitle("Artisan Port Manager")
     }
 }

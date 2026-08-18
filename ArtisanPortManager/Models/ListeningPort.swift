@@ -23,7 +23,9 @@ struct ListeningPort: Identifiable, Sendable, Hashable {
         guard let workingDirectory, workingDirectory != "/" else { return nil }
         return URL(fileURLWithPath: workingDirectory).lastPathComponent
     }
-    var localhostURL: URL? { URL(string: "http://localhost:\(port)") }
+    var localhostURL: URL? { url(scheme: "http") }
+
+    func url(scheme: String) -> URL? { URL(string: "\(scheme)://localhost:\(port)") }
     var endpoint: String {
         guard let address else { return "localhost:\(port)" }
         return addressFamily == .ipv6 ? "[\(address)]:\(port)" : "\(address):\(port)"

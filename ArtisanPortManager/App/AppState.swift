@@ -10,21 +10,32 @@ final class AppState: ObservableObject {
     @Published var errorMessage: String?
     @Published var statusMessage: String?
     @Published private(set) var terminatingPIDs: Set<pid_t> = []
+    /// Probe results keyed by port number, retained across refreshes so rows do not
+    /// flicker back to "unknown" on every scan.
+    @Published private(set) var reachability: [Int: PortReachability] = [:]
 
     let settings: SettingsStore
     let bookmarks: PortBookmarkStore
     private let scanner: any PortScanning
     private let controller: any ProcessControlling
+    private let prober: any ReachabilityProbing
+    private var probeTask: Task<Void, Never>?
     private let logger = Logger(subsystem: "com.artisan.portmanager", category: "ui")
 
     init(scanner: any PortScanning = PortScanner(),
          controller: any ProcessControlling = ProcessController(),
          settings: SettingsStore? = nil,
-         bookmarks: PortBookmarkStore? = nil) {
+         bookmarks: PortBookmarkStore? = nil,
+         prober: (any ReachabilityProbing)? = nil) {
         self.scanner = scanner
         self.controller = controller
         self.settings = settings ?? SettingsStore()
         self.bookmarks = bookmarks ?? PortBookmarkStore()
+        self.prober = prober ?? ReachabilityProber()
+    }
+
+    func reachability(for port: ListeningPort) -> PortReachability {
+        reachability[port.port] ?? .unknown
     }
 
     var filteredPorts: [ListeningPort] {
@@ -67,10 +78,49 @@ final class AppState: ObservableObject {
         do {
             ports = try await scanner.scan()
             errorMessage = nil
+            probeReachability()
         } catch {
             logger.error("Refresh failed: \(error.localizedDescription, privacy: .public)")
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
+    }
+
+    /// Probes every visible port, replacing any in-flight probe from a previous scan.
+    ///
+    /// Results for ports that are no longer listening are dropped so the cache cannot grow
+    /// without bound over a long session.
+    private func probeReachability() {
+        probeTask?.cancel()
+        guard settings.probeReachability else {
+            reachability.removeAll()
+            return
+        }
+
+        let live = Set(ports.map(\.port))
+        reachability = reachability.filter { live.contains($0.key) }
+        for port in live where reachability[port] == nil {
+            reachability[port] = .probing
+        }
+
+        let prober = prober
+        probeTask = Task { [weak self] in
+            await withTaskGroup(of: (Int, PortReachability).self) { group in
+                for port in live.sorted() {
+                    group.addTask { (port, await prober.probe(port: port)) }
+                }
+                for await (port, result) in group {
+                    guard !Task.isCancelled else { return }
+                    self?.reachability[port] = result
+                }
+            }
+        }
+    }
+
+    /// Re-probes a single port on demand, for the detail view's refresh control.
+    func probe(_ port: ListeningPort) async {
+        reachability[port.port] = .probing
+        let result = await prober.probe(port: port.port)
+        reachability[port.port] = result
     }
 
     func terminate(_ port: ListeningPort, force: Bool) async {

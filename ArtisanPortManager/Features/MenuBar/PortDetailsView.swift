@@ -44,8 +44,9 @@ struct PortDetailsView: View {
                         .buttonStyle(.plain)
                         .help(state.isFavorite(port) ? "Remove from Favorites" : "Add to Favorites")
                         .accessibilityLabel(state.isFavorite(port) ? "Remove from Favorites" : "Add to Favorites")
-                        Label("Listening", systemImage: "circle.fill")
-                            .font(.caption).foregroundStyle(.green)
+                        Label(state.reachability(for: port).label, systemImage: "circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(statusColor)
                             .lineLimit(1)
                             .fixedSize()
                     }
@@ -55,6 +56,7 @@ struct PortDetailsView: View {
                     Divider()
 
                     VStack(alignment: .leading, spacing: 12) {
+                        reachabilityDetail
                         detail("Project", port.projectName)
                         detail("PID", String(port.pid))
                         detail("Address", port.endpoint)
@@ -91,6 +93,39 @@ struct PortDetailsView: View {
         }
     }
 
+    private var statusColor: Color {
+        switch state.reachability(for: port) {
+        case .http: return .green
+        case .tcpOnly: return .blue
+        case .unreachable: return .orange
+        case .probing: return .gray
+        case .unknown: return .green
+        }
+    }
+
+    /// Reachability gets its own row with a re-check control, since it is the one piece of
+    /// detail here that can change without the process changing.
+    private var reachabilityDetail: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("REACHABILITY")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Text(state.reachability(for: port).detailLabel)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                Spacer(minLength: 4)
+                Button { Task { await state.probe(port) } } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .help("Check this port again")
+                .accessibilityLabel("Check this port again")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
     @ViewBuilder private func detail(_ label: String, _ value: String?, lineLimit: Int = 1) -> some View {
         if let value, !value.isEmpty {
             VStack(alignment: .leading, spacing: 3) {
@@ -119,8 +154,12 @@ struct PortDetailsView: View {
 
     private func quickActionButtons(spacing: CGFloat) -> some View {
         HStack(spacing: spacing) {
-            Button { browser.open(port: port) } label: { Label("Open", systemImage: "safari") }
-            Button { clipboard.copy("http://localhost:\(port.port)") } label: { Label("Copy URL", systemImage: "link") }
+            Button {
+                browser.open(port: port, reachability: state.reachability(for: port))
+            } label: { Label("Open", systemImage: "safari") }
+            Button {
+                clipboard.copy("\(state.reachability(for: port).preferredScheme)://localhost:\(port.port)")
+            } label: { Label("Copy URL", systemImage: "link") }
             Menu {
                 Button("Port") { clipboard.copy(String(port.port)) }
                 Button("PID") { clipboard.copy(String(port.pid)) }
