@@ -6,6 +6,7 @@ struct PortListView: View {
     @State private var pendingPort: ListeningPort?
     @State private var pendingForce = false
     @State private var showsConfirmation = false
+    @State private var expandedPIDs: Set<pid_t> = []
     private let browser = BrowserService()
     private let clipboard = ClipboardService()
 
@@ -20,43 +21,104 @@ struct PortListView: View {
                     systemImage: state.searchText.isEmpty ? "network.slash" : "magnifyingglass",
                     description: Text(state.searchText.isEmpty ? "No relevant TCP listeners were found." : "Try a different port, process, project, or PID."))
             } else {
-                List(state.filteredPorts) { port in
-                    HStack(spacing: 8) {
-                        NavigationLink(value: port) {
-                            PortRowView(port: port, isTerminating: state.terminatingPIDs.contains(port.pid))
-                        }
-                        .buttonStyle(.plain)
-
-                        Button(role: .destructive) { confirm(port, force: false) } label: {
-                            if state.terminatingPIDs.contains(port.pid) {
-                                ProgressView().controlSize(.small)
-                            } else {
-                                Image(systemName: "stop.circle")
-                                    .font(.title3)
-                                    .foregroundStyle(.red)
+                List {
+                    ForEach(state.filteredPortGroups) { group in
+                        if group.isMultiPort {
+                            groupHeader(group)
+                            if expandedPIDs.contains(group.pid) {
+                                ForEach(group.ports) { port in
+                                    portRow(port, isNested: true)
+                                }
                             }
+                        } else {
+                            portRow(group.representative, isNested: false)
                         }
-                        .buttonStyle(.borderless)
-                        .frame(width: 28, height: 28)
-                        .disabled(state.terminatingPIDs.contains(port.pid))
-                        .help("Terminate \(port.processName) on port \(port.port)")
-                        .accessibilityLabel("Terminate \(port.processName) on port \(port.port)")
                     }
-                    .contextMenu { contextMenu(for: port) }
                 }
                 .listStyle(.inset)
+                .animation(.easeInOut(duration: 0.18), value: expandedPIDs)
             }
         }
         .navigationDestination(for: ListeningPort.self) { PortDetailsView(port: $0, state: state) }
-        .confirmationDialog(pendingForce ? "Force kill \(pendingPort?.processName ?? "process")?" : "Terminate \(pendingPort?.processName ?? "process") on port \(pendingPort.map { String($0.port) } ?? "")?",
-                            isPresented: $showsConfirmation, titleVisibility: .visible) {
+        .confirmationDialog(confirmationTitle, isPresented: $showsConfirmation, titleVisibility: .visible) {
             Button(pendingForce ? "Force Kill" : "Terminate", role: .destructive) {
                 if let pendingPort { Task { await state.terminate(pendingPort, force: pendingForce) } }
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text(pendingForce ? "The process will not be given a chance to shut down cleanly." : "The process will receive SIGTERM.")
+            Text(confirmationMessage)
         }
+    }
+
+    /// Collapsed header for a multi-port process. Tapping toggles its ports rather than
+    /// navigating, because the group itself is not a single terminable listener.
+    @ViewBuilder private func groupHeader(_ group: PortGroup) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                if expandedPIDs.contains(group.pid) { expandedPIDs.remove(group.pid) }
+                else { expandedPIDs.insert(group.pid) }
+            } label: {
+                PortGroupRowView(group: group,
+                                 isExpanded: expandedPIDs.contains(group.pid),
+                                 terminatingPIDs: state.terminatingPIDs)
+            }
+            .buttonStyle(.plain)
+
+            terminateButton(for: group.representative,
+                            help: "Terminate \(group.processName) (PID \(group.pid)) and all \(group.ports.count) of its ports")
+        }
+        .contextMenu { groupContextMenu(for: group) }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(group.processName), \(group.ports.count) ports, PID \(group.pid)")
+        .accessibilityHint(expandedPIDs.contains(group.pid) ? "Collapse ports" : "Expand ports")
+    }
+
+    @ViewBuilder private func portRow(_ port: ListeningPort, isNested: Bool) -> some View {
+        HStack(spacing: 8) {
+            NavigationLink(value: port) {
+                PortRowView(port: port, isTerminating: state.terminatingPIDs.contains(port.pid))
+            }
+            .buttonStyle(.plain)
+
+            terminateButton(for: port,
+                            help: "Terminate \(port.processName) on port \(port.port)")
+        }
+        .padding(.leading, isNested ? 18 : 0)
+        .contextMenu { contextMenu(for: port) }
+    }
+
+    @ViewBuilder private func terminateButton(for port: ListeningPort, help: String) -> some View {
+        Button(role: .destructive) { confirm(port, force: false) } label: {
+            if state.terminatingPIDs.contains(port.pid) {
+                ProgressView().controlSize(.small)
+            } else {
+                Image(systemName: "stop.circle")
+                    .font(.title3)
+                    .foregroundStyle(.red)
+            }
+        }
+        .buttonStyle(.borderless)
+        .frame(width: 28, height: 28)
+        .disabled(state.terminatingPIDs.contains(port.pid))
+        .help(help)
+        .accessibilityLabel(help)
+    }
+
+    @ViewBuilder private func groupContextMenu(for group: PortGroup) -> some View {
+        Button(expandedPIDs.contains(group.pid) ? "Collapse Ports" : "Expand Ports") {
+            if expandedPIDs.contains(group.pid) { expandedPIDs.remove(group.pid) }
+            else { expandedPIDs.insert(group.pid) }
+        }
+        Button("Copy All Ports") {
+            clipboard.copy(group.ports.map { String($0.port) }.joined(separator: ", "))
+        }
+        Button("Copy PID") { clipboard.copy(String(group.pid)) }
+        if let cwd = group.representative.workingDirectory {
+            Button("Reveal Project in Finder") { browser.reveal(directory: cwd) }
+        }
+        Divider()
+        Button("Terminate Process", role: .destructive) { confirm(group.representative, force: false) }
+        Button("Force Kill Process", role: .destructive) { confirm(group.representative, force: true) }
     }
 
     @ViewBuilder private func contextMenu(for port: ListeningPort) -> some View {
@@ -68,6 +130,33 @@ struct PortListView: View {
         Divider()
         Button("Terminate", role: .destructive) { confirm(port, force: false) }
         Button("Force Kill", role: .destructive) { confirm(port, force: true) }
+    }
+
+    /// Number of ports the pending process would take down. Terminating signals the whole
+    /// PID, so a multi-port process loses every listener, not just the row that was clicked.
+    private var pendingPortCount: Int {
+        guard let pendingPort else { return 0 }
+        return state.filteredPortGroups.first { $0.pid == pendingPort.pid }?.ports.count ?? 1
+    }
+
+    private var confirmationTitle: String {
+        let name = pendingPort?.processName ?? "process"
+        let action = pendingForce ? "Force kill" : "Terminate"
+        guard let pendingPort else { return "\(action) \(name)?" }
+        return pendingPortCount > 1
+            ? "\(action) \(name) and its \(pendingPortCount) ports?"
+            : "\(action) \(name) on port \(pendingPort.port)?"
+    }
+
+    private var confirmationMessage: String {
+        var text = pendingForce
+            ? "The process will not be given a chance to shut down cleanly."
+            : "The process will receive SIGTERM and can shut down cleanly."
+        if pendingPortCount > 1, let pendingPort,
+           let group = state.filteredPortGroups.first(where: { $0.pid == pendingPort.pid }) {
+            text += " This releases ports \(group.ports.map { String($0.port) }.joined(separator: ", "))."
+        }
+        return text
     }
 
     private func confirm(_ port: ListeningPort, force: Bool) {

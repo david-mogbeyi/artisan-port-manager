@@ -5,6 +5,7 @@ Artisan Port Manager is a lightweight, native macOS menu-bar utility for finding
 ## Features
 
 - Live, ascending list of TCP listeners with port, process, PID, user, address family, command, executable, working directory, and inferred project name
+- Processes listening on multiple ports are grouped into one collapsible row, so a single noisy process does not flood the list
 - Instant search across ports, PIDs, process names, projects, commands, users, addresses, and working directories
 - Native browser, clipboard, and Finder actions
 - Safe process control: PID identity revalidation, SIGTERM by default, separately confirmed SIGKILL, self-process protection, duplicate-signal prevention, and clear permission errors
@@ -92,6 +93,11 @@ xcodebuild -project ArtisanPortManager.xcodeproj \
 ```
 
 `Diagnostics/IntegrationDiagnostic.swift` is a source-level integration diagnostic. It starts an owned Python listener on port 48765, confirms the scanner sees it, terminates it through `ProcessController`, and confirms it disappears. It is intentionally outside the normal test suite so normal tests never depend on system port state.
+
+## Versioning and Changelog
+
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Notable
+changes for each release are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## Known Limitations
 

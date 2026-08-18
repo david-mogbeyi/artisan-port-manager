@@ -51,8 +51,9 @@ struct MenuBarView: View {
                 .buttonStyle(.borderless)
                 .padding(.horizontal, 12).padding(.vertical, 9)
             }
-            .frame(width: 390, height: 540)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(width: 390, height: 540)
         .task(id: "\(state.settings.autoRefresh)-\(state.settings.refreshInterval)") {
             await state.refresh()
             guard state.settings.autoRefresh else { return }
