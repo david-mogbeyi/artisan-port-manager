@@ -21,8 +21,26 @@ struct PortListView: View {
                     description: Text(state.searchText.isEmpty ? "No relevant TCP listeners were found." : "Try a different port, process, project, or PID."))
             } else {
                 List(state.filteredPorts) { port in
-                    NavigationLink(value: port) {
-                        PortRowView(port: port, isTerminating: state.terminatingPIDs.contains(port.pid))
+                    HStack(spacing: 8) {
+                        NavigationLink(value: port) {
+                            PortRowView(port: port, isTerminating: state.terminatingPIDs.contains(port.pid))
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(role: .destructive) { confirm(port, force: false) } label: {
+                            if state.terminatingPIDs.contains(port.pid) {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "stop.circle")
+                                    .font(.title3)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                        .frame(width: 28, height: 28)
+                        .disabled(state.terminatingPIDs.contains(port.pid))
+                        .help("Terminate \(port.processName) on port \(port.port)")
+                        .accessibilityLabel("Terminate \(port.processName) on port \(port.port)")
                     }
                     .contextMenu { contextMenu(for: port) }
                 }
@@ -30,7 +48,7 @@ struct PortListView: View {
             }
         }
         .navigationDestination(for: ListeningPort.self) { PortDetailsView(port: $0, state: state) }
-        .confirmationDialog(pendingForce ? "Force kill \(pendingPort?.processName ?? "process")?" : "Terminate \(pendingPort?.processName ?? "process")?",
+        .confirmationDialog(pendingForce ? "Force kill \(pendingPort?.processName ?? "process")?" : "Terminate \(pendingPort?.processName ?? "process") on port \(pendingPort.map { String($0.port) } ?? "")?",
                             isPresented: $showsConfirmation, titleVisibility: .visible) {
             Button(pendingForce ? "Force Kill" : "Terminate", role: .destructive) {
                 if let pendingPort { Task { await state.terminate(pendingPort, force: pendingForce) } }

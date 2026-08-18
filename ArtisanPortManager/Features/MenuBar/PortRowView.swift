@@ -12,10 +12,9 @@ struct PortRowView: View {
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
+                    Circle().fill(.green).frame(width: 7, height: 7)
                     Text(String(port.port)).font(.headline.monospacedDigit())
                     Spacer()
-                    if isTerminating { ProgressView().controlSize(.small) }
-                    else { Circle().fill(.green).frame(width: 7, height: 7) }
                 }
                 Text(port.processName).lineLimit(1)
                 Text("\(port.projectName ?? port.addressFamily.rawValue) · PID \(port.pid)")
@@ -26,6 +25,7 @@ struct PortRowView: View {
         }
         .padding(.vertical, 5)
         .contentShape(Rectangle())
+        .opacity(isTerminating ? 0.6 : 1)
     }
 
     private var iconName: String {

@@ -62,7 +62,7 @@ The scanner runs macOS `lsof` directly with an argument array:
 /usr/sbin/lsof -nP -iTCP -sTCP:LISTEN -FpcuPnT
 ```
 
-The `-F` mode is machine-oriented and avoids parsing the human table. `LsofParser` understands IPv4, bracketed IPv6, loopback, and wildcard endpoints. Results are deterministically deduplicated by PID, port, and address family; the same process still gets a separate row for each port. Metadata is enriched in batches to avoid launching commands per row. No process-derived string is ever evaluated by a shell.
+The `-F` mode is machine-oriented and avoids parsing the human table. `LsofParser` understands IPv4, bracketed IPv6, loopback, and wildcard endpoints. Parallel IPv4 and IPv6 sockets owned by the same PID on the same port are collapsed into one logical row; different processes and different ports remain distinct. Metadata is enriched in batches to avoid launching commands per row. No process-derived string is ever evaluated by a shell.
 
 ## Process Termination
 

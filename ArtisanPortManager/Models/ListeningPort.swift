@@ -18,13 +18,16 @@ struct ListeningPort: Identifiable, Sendable, Hashable {
     let address: String?
     let addressFamily: AddressFamily
 
-    var id: String { "\(pid):\(port):\(addressFamily.rawValue)" }
+    var id: String { "\(pid):\(port)" }
     var projectName: String? {
         guard let workingDirectory, workingDirectory != "/" else { return nil }
         return URL(fileURLWithPath: workingDirectory).lastPathComponent
     }
     var localhostURL: URL? { URL(string: "http://localhost:\(port)") }
-    var endpoint: String { address.map { "\($0):\(port)" } ?? "localhost:\(port)" }
+    var endpoint: String {
+        guard let address else { return "localhost:\(port)" }
+        return addressFamily == .ipv6 ? "[\(address)]:\(port)" : "\(address):\(port)"
+    }
 
     func matches(_ query: String) -> Bool {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

@@ -9,42 +9,43 @@ struct PortDetailsView: View {
     private let clipboard = ClipboardService()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(String(port.port)).font(.system(size: 32, weight: .semibold, design: .rounded))
-                    Spacer()
-                    Label("Listening", systemImage: "circle.fill")
-                        .font(.caption).foregroundStyle(.green)
-                }
-                Text(port.processName).font(.title3).textSelection(.enabled)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "network")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(String(port.port))
+                                .font(.system(size: 26, weight: .semibold, design: .rounded))
+                            Text(port.processName).font(.headline).textSelection(.enabled)
+                        }
+                        Spacer()
+                        Label("Listening", systemImage: "circle.fill")
+                            .font(.caption).foregroundStyle(.green)
+                    }
 
-                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 9) {
-                    detail("Project", port.projectName)
-                    detail("PID", String(port.pid))
-                    detail("Address", port.endpoint)
-                    detail("Family", port.addressFamily.rawValue)
-                    detail("User", port.user)
-                    detail("Parent PID", port.parentPID.map(String.init))
-                    detail("Working Directory", port.workingDirectory)
-                    detail("Executable", port.executablePath)
-                    detail("Command", port.command)
-                }
+                    quickActions
+                    Divider()
 
-                Divider()
-                actionButtons
-                Divider()
-                HStack {
-                    Button("Terminate", role: .destructive) { confirm(force: false) }
-                    Button("Force Kill", role: .destructive) { confirm(force: true) }
-                    Spacer()
-                    if state.terminatingPIDs.contains(port.pid) { ProgressView().controlSize(.small) }
+                    VStack(alignment: .leading, spacing: 12) {
+                        detail("Project", port.projectName)
+                        detail("PID", String(port.pid))
+                        detail("Address", port.endpoint)
+                        detail("User", port.user)
+                        detail("Working Directory", port.workingDirectory, lineLimit: 2)
+                        detail("Executable", port.executablePath, lineLimit: 2)
+                        detail("Command", port.command, lineLimit: 3)
+                    }
                 }
-                .disabled(state.terminatingPIDs.contains(port.pid))
+                .padding(16)
             }
-            .padding(16)
+
+            Divider()
+            destructiveActionBar
         }
-        .navigationTitle("Port \(port.port)")
+        .navigationTitle("Port " + String(port.port))
         .confirmationDialog(pendingForce ? "Force kill \(port.processName)?" : "Terminate \(port.processName) on port \(port.port)?",
                             isPresented: $showsConfirmation, titleVisibility: .visible) {
             Button(pendingForce ? "Force Kill" : "Terminate", role: .destructive) {
@@ -57,31 +58,57 @@ struct PortDetailsView: View {
         }
     }
 
-    @ViewBuilder private func detail(_ label: String, _ value: String?) -> some View {
+    @ViewBuilder private func detail(_ label: String, _ value: String?, lineLimit: Int = 1) -> some View {
         if let value, !value.isEmpty {
-            GridRow {
-                Text(label).font(.caption).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
-                Text(value).font(.callout).textSelection(.enabled).lineLimit(4)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(label.uppercased())
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .lineLimit(lineLimit)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
-    private var actionButtons: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button { browser.open(port: port) } label: { Label("Open in Browser", systemImage: "safari") }
-            Button { clipboard.copy("http://localhost:\(port.port)") } label: { Label("Copy localhost URL", systemImage: "link") }
-            Menu("Copy") {
+    private var quickActions: some View {
+        HStack(spacing: 8) {
+            Button { browser.open(port: port) } label: { Label("Open", systemImage: "safari") }
+            Button { clipboard.copy("http://localhost:\(port.port)") } label: { Label("Copy URL", systemImage: "link") }
+            Menu {
                 Button("Port") { clipboard.copy(String(port.port)) }
                 Button("PID") { clipboard.copy(String(port.pid)) }
                 Button("Process Name") { clipboard.copy(port.processName) }
                 if let cwd = port.workingDirectory { Button("Working Directory") { clipboard.copy(cwd) } }
                 Button("Full Process Information") { clipboard.copy(port.fullDescription) }
-            }
-            if let cwd = port.workingDirectory {
-                Button { browser.reveal(directory: cwd) } label: { Label("Reveal Project in Finder", systemImage: "folder") }
-            }
+                if let cwd = port.workingDirectory {
+                    Divider()
+                    Button("Reveal Project in Finder") { browser.reveal(directory: cwd) }
+                }
+            } label: { Label("More", systemImage: "ellipsis.circle") }
+            Spacer()
         }
-        .buttonStyle(.link)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+    }
+
+    private var destructiveActionBar: some View {
+        HStack(spacing: 8) {
+            Button("Terminate", role: .destructive) { confirm(force: false) }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+            Button("Force Kill", role: .destructive) { confirm(force: true) }
+                .buttonStyle(.bordered)
+            Spacer()
+            if state.terminatingPIDs.contains(port.pid) { ProgressView().controlSize(.small) }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.bar)
+        .disabled(state.terminatingPIDs.contains(port.pid))
     }
 
     private func confirm(force: Bool) {

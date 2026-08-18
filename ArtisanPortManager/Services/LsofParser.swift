@@ -36,15 +36,27 @@ struct LsofParser {
             }
         }
 
-        // One logical row per PID/port/family. Prefer a specific interface to a wildcard.
-        let grouped = Dictionary(grouping: result) { "\($0.pid):\($0.port):\($0.addressFamily.rawValue)" }
+        // The product's primary unit is a process listening on a port. A process often
+        // owns parallel IPv4 and IPv6 sockets for the same listener, so collapse those
+        // into one row while preserving separate rows for different PIDs or ports.
+        let grouped = Dictionary(grouping: result) { "\($0.pid):\($0.port)" }
         return grouped.values.compactMap { sockets in
-            sockets.sorted { lhs, rhs in
-                let lhsWildcard = lhs.address == "*" || lhs.address == "0.0.0.0" || lhs.address == "::"
-                let rhsWildcard = rhs.address == "*" || rhs.address == "0.0.0.0" || rhs.address == "::"
-                return !lhsWildcard && rhsWildcard
-            }.first
-        }.sorted { ($0.port, $0.pid, $0.addressFamily.rawValue) < ($1.port, $1.pid, $1.addressFamily.rawValue) }
+            sockets.sorted(by: isPreferredRepresentative).first
+        }.sorted { ($0.port, $0.pid) < ($1.port, $1.pid) }
+    }
+
+    private func isPreferredRepresentative(_ lhs: DiscoveredSocket, _ rhs: DiscoveredSocket) -> Bool {
+        func rank(_ socket: DiscoveredSocket) -> Int {
+            let wildcard = socket.address == "*" || socket.address == "0.0.0.0" || socket.address == "::"
+            if !wildcard && socket.addressFamily == .ipv4 { return 0 }
+            if !wildcard && socket.addressFamily == .ipv6 { return 1 }
+            if socket.addressFamily == .ipv4 { return 2 }
+            return 3
+        }
+        let lhsRank = rank(lhs)
+        let rhsRank = rank(rhs)
+        if lhsRank != rhsRank { return lhsRank < rhsRank }
+        return (lhs.address ?? "") < (rhs.address ?? "")
     }
 
     private func parseEndpoint(_ value: String) -> (address: String?, port: Int, family: AddressFamily)? {
