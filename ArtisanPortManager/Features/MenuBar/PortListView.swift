@@ -87,7 +87,8 @@ struct PortListView: View {
                 PortRowView(port: port,
                             isTerminating: state.terminatingPIDs.contains(port.pid),
                             alias: state.alias(for: port),
-                            isFavorite: state.isFavorite(port))
+                            isFavorite: state.isFavorite(port),
+                            reachability: state.reachability(for: port))
             }
             .buttonStyle(.plain)
 
@@ -145,8 +146,13 @@ struct PortListView: View {
         }
         Button(state.alias(for: port) == nil ? "Rename…" : "Edit Alias…") { renamingPort = port }
         Divider()
-        Button("Open localhost:\(port.port)") { browser.open(port: port) }
-        Button("Copy URL") { clipboard.copy("http://localhost:\(port.port)") }
+        Button("Open \(state.reachability(for: port).preferredScheme)://localhost:\(port.port)") {
+            browser.open(port: port, reachability: state.reachability(for: port))
+        }
+        Button("Copy URL") {
+            clipboard.copy("\(state.reachability(for: port).preferredScheme)://localhost:\(port.port)")
+        }
+        Button("Check Reachability") { Task { await state.probe(port) } }
         Button("Copy Port") { clipboard.copy(String(port.port)) }
         Button("Copy PID") { clipboard.copy(String(port.pid)) }
         if let cwd = port.workingDirectory { Button("Reveal Project in Finder") { browser.reveal(directory: cwd) } }

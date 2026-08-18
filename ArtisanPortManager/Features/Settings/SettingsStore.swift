@@ -7,11 +7,13 @@ final class SettingsStore: ObservableObject {
         static let autoRefresh = "autoRefresh"
         static let refreshInterval = "refreshInterval"
         static let showSystemProcesses = "showSystemProcesses"
+        static let probeReachability = "probeReachability"
     }
 
     @Published var autoRefresh: Bool { didSet { defaults.set(autoRefresh, forKey: Key.autoRefresh) } }
     @Published var refreshInterval: Double { didSet { defaults.set(refreshInterval, forKey: Key.refreshInterval) } }
     @Published var showSystemProcesses: Bool { didSet { defaults.set(showSystemProcesses, forKey: Key.showSystemProcesses) } }
+    @Published var probeReachability: Bool { didSet { defaults.set(probeReachability, forKey: Key.probeReachability) } }
     @Published private(set) var launchAtLogin: Bool
     @Published var launchAtLoginError: String?
     private let defaults: UserDefaults
@@ -19,10 +21,12 @@ final class SettingsStore: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [Key.autoRefresh: true, Key.refreshInterval: 3.0,
-                                     Key.showSystemProcesses: false])
+                                     Key.showSystemProcesses: false,
+                                     Key.probeReachability: true])
         autoRefresh = defaults.bool(forKey: Key.autoRefresh)
         refreshInterval = defaults.double(forKey: Key.refreshInterval)
         showSystemProcesses = defaults.bool(forKey: Key.showSystemProcesses)
+        probeReachability = defaults.bool(forKey: Key.probeReachability)
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 

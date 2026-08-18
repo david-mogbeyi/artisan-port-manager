@@ -8,7 +8,8 @@ Artisan Port Manager is a lightweight, native macOS menu-bar utility for finding
 - Processes listening on multiple ports are grouped into one collapsible row, so a single noisy process does not flood the list
 - Instant search across ports, PIDs, process names, projects, commands, users, addresses, working directories, and aliases
 - Rename ports to meaningful aliases and pin favorites to the top of the list; both are keyed by port and executable, so they survive restarts
-- Native browser, clipboard, and Finder actions
+- Reachability probing that reports whether a port serves HTTP, HTTPS, accepts TCP only, or is not responding
+- Native browser, clipboard, and Finder actions, opening each port with the scheme it actually serves
 - Safe process control: PID identity revalidation, SIGTERM by default, separately confirmed SIGKILL, self-process protection, duplicate-signal prevention, and clear permission errors
 - Manual refresh (`⌘R`) and configurable auto-refresh while the menu UI is active
 - Launch at Login using `SMAppService`
@@ -104,7 +105,7 @@ changes for each release are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 - Processes owned by other users may expose limited metadata and cannot be terminated without appropriate OS permission.
 - Docker Desktop may show its proxy process rather than container-level metadata.
-- “Open in Browser” always uses `http://localhost:<port>`; protocol probing is deliberately omitted.
+- Reachability probing only inspects loopback (`127.0.0.1`) and accepts self-signed certificates there.
 - Launch at Login registration is available only from a properly bundled application.
 - Port discovery depends on the system `lsof` output contract.
 
@@ -113,4 +114,3 @@ changes for each release are recorded in [CHANGELOG.md](CHANGELOG.md).
 - Signed/notarized release automation and DMG packaging
 - Optional Docker container enrichment
 - Port occupancy notifications
-- HTTP/HTTPS reachability detection

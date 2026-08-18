@@ -5,6 +5,7 @@ struct PortRowView: View {
     let isTerminating: Bool
     var alias: String?
     var isFavorite = false
+    var reachability: PortReachability = .unknown
 
     var body: some View {
         HStack(spacing: 12) {
@@ -14,8 +15,15 @@ struct PortRowView: View {
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Circle().fill(.green).frame(width: 7, height: 7)
+                    Circle().fill(statusColor).frame(width: 7, height: 7)
+                        .accessibilityLabel(reachability.label)
                     Text(String(port.port)).font(.headline.monospacedDigit())
+                    if reachability.isWebServer {
+                        Image(systemName: "globe")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Serves \(reachability.preferredScheme.uppercased())")
+                    }
                     if isFavorite {
                         Image(systemName: "star.fill")
                             .font(.caption2)
@@ -38,6 +46,18 @@ struct PortRowView: View {
         .padding(.vertical, 5)
         .contentShape(Rectangle())
         .opacity(isTerminating ? 0.6 : 1)
+    }
+
+    /// Green for a healthy web server, blue for a non-HTTP listener such as a database,
+    /// orange when the socket is held but refuses connections, grey while probing.
+    private var statusColor: Color {
+        switch reachability {
+        case .http: return .green
+        case .tcpOnly: return .blue
+        case .unreachable: return .orange
+        case .probing: return .gray
+        case .unknown: return .green
+        }
     }
 
     private var subtitle: String {

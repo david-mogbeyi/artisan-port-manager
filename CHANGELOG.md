@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-19
+
+A listening socket no longer just means "something is bound here" — the app now says what
+the port actually serves.
+
+### Added
+
+- **Reachability probing.** Each listening port is probed on loopback to determine whether
+  it serves HTTP, HTTPS, accepts TCP without speaking HTTP (a database, for example), or
+  holds the socket while refusing connections. The status appears as a coloured dot and
+  label in the list, and as a dedicated Reachability row in the detail view with a
+  re-check control.
+- **Check Reachability** action in the row context menu for probing a single port on demand.
+- **Check Port Reachability** setting, on by default, to disable probing entirely.
+
+### Fixed
+
+- **"Open" no longer assumes `http://`.** The action previously always opened
+  `http://localhost:<port>`, which failed for HTTPS-only dev servers. It now uses the
+  scheme discovered by probing, falling back to `http` when a port has not been probed.
+  Copy URL follows the same rule. This resolves a documented limitation.
+
 ## [1.2.0] - 2026-08-19
 
 Ports can now be named and pinned, turning the list from a system readout into a
@@ -77,7 +99,8 @@ longer floods the list, and the detail screen now fits the popover.
 - Collapsed duplicate rows for the same process and port, including parallel IPv4/IPv6
   sockets and repeated file descriptors for one listener.
 
-[Unreleased]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/david-mogbeyi/artisan-port-manager/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/david-mogbeyi/artisan-port-manager/releases/tag/v1.0.0
