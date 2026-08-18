@@ -10,7 +10,7 @@ struct PortDetailsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
+            ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 12) {
                         Image(systemName: "network")
@@ -19,12 +19,22 @@ struct PortDetailsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(port.port))
                                 .font(.system(size: 26, weight: .semibold, design: .rounded))
-                            Text(port.processName).font(.headline).textSelection(.enabled)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            Text(port.processName)
+                                .font(.headline)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .textSelection(.enabled)
                         }
-                        Spacer()
+                        .layoutPriority(1)
+                        Spacer(minLength: 8)
                         Label("Listening", systemImage: "circle.fill")
                             .font(.caption).foregroundStyle(.green)
+                            .lineLimit(1)
+                            .fixedSize()
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     quickActions
                     Divider()
@@ -40,11 +50,14 @@ struct PortDetailsView: View {
                     }
                 }
                 .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
             destructiveActionBar
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("Port " + String(port.port))
         .confirmationDialog(pendingForce ? "Force kill \(port.processName)?" : "Terminate \(port.processName) on port \(port.port)?",
                             isPresented: $showsConfirmation, titleVisibility: .visible) {
@@ -75,7 +88,17 @@ struct PortDetailsView: View {
     }
 
     private var quickActions: some View {
-        HStack(spacing: 8) {
+        ViewThatFits(in: .horizontal) {
+            quickActionButtons(spacing: 8)
+            quickActionButtons(spacing: 4)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func quickActionButtons(spacing: CGFloat) -> some View {
+        HStack(spacing: spacing) {
             Button { browser.open(port: port) } label: { Label("Open", systemImage: "safari") }
             Button { clipboard.copy("http://localhost:\(port.port)") } label: { Label("Copy URL", systemImage: "link") }
             Menu {
@@ -89,10 +112,10 @@ struct PortDetailsView: View {
                     Button("Reveal Project in Finder") { browser.reveal(directory: cwd) }
                 }
             } label: { Label("More", systemImage: "ellipsis.circle") }
-            Spacer()
+            .fixedSize()
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
+        .lineLimit(1)
     }
 
     private var destructiveActionBar: some View {
@@ -102,7 +125,7 @@ struct PortDetailsView: View {
                 .tint(.red)
             Button("Force Kill", role: .destructive) { confirm(force: true) }
                 .buttonStyle(.bordered)
-            Spacer()
+            Spacer(minLength: 0)
             if state.terminatingPIDs.contains(port.pid) { ProgressView().controlSize(.small) }
         }
         .padding(.horizontal, 14)

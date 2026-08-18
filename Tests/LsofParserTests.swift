@@ -73,6 +73,15 @@ final class LsofParserTests: XCTestCase {
         XCTAssertEqual(ports.map(\.pid), [10, 11])
     }
 
+    func testMalformedPIDDoesNotInheritThePreviousProcess() {
+        // A socket must never be attributed to a stale PID — this app kills by PID.
+        let ports = LsofParser().parse("p10\ncnode\nn*:3000\npNOTAPID\ncghost\nn*:9999\n")
+        XCTAssertEqual(ports.count, 1)
+        XCTAssertEqual(ports.first?.pid, 10)
+        XCTAssertEqual(ports.first?.port, 3000)
+        XCTAssertFalse(ports.contains { $0.port == 9999 })
+    }
+
     func testSameProcessCanExposeMultiplePorts() {
         let ports = LsofParser().parse("p9\ncpython\nn*:8000\nn*:8001\n")
         XCTAssertEqual(ports.map(\.port), [8000, 8001])

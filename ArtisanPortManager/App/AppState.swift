@@ -31,6 +31,10 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Filtered ports clustered by owning process so a single process listening on many
+    /// ports occupies one row instead of repeating itself down the list.
+    var filteredPortGroups: [PortGroup] { PortGroup.group(filteredPorts) }
+
     func refresh() async {
         guard !isRefreshing else { return }
         isRefreshing = true

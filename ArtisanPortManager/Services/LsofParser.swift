@@ -22,7 +22,13 @@ struct LsofParser {
             guard let tag = line.first else { continue }
             let value = String(line.dropFirst())
             switch tag {
-            case "p": pid = pid_t(value); command = "Unknown"; userID = nil
+            case "p":
+                // A malformed or unparsable PID must clear the previous one, otherwise the
+                // next socket is silently attributed to the wrong process — and this app
+                // kills by PID.
+                pid = pid_t(value)
+                command = "Unknown"
+                userID = nil
             case "c": command = value
             case "u": userID = value
             case "P": family = value == "TCP" ? .unknown : family
